@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IEA Electricity Generation Per Capita</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 16px;
+      color: #222;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #222;
+    }
+    .subtitle {
+      font-size: 15px;
+      color: #555;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 600px) {
+      h1 { font-size: 20px; }
+      .subtitle { font-size: 13px; }
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      margin-bottom: 20px;
+    }
+    .controls label {
+      font-size: 13px;
+      color: #222;
+      white-space: nowrap;
+    }
+    select {
+      font-size: 13px;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: white;
+      color: #222;
+      cursor: pointer;
+      max-width: 100%;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px 32px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      max-width: 920px;
+      box-sizing: border-box;
+    }
+    @media (max-width: 600px) {
+      .chart-container { padding: 16px; }
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      margin-bottom: 20px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #222;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .row-label {
+      width: 210px;
+      min-width: 210px;
+      font-size: 13px;
+      text-align: right;
+      padding-right: 12px;
+      color: #222;
+    }
+    @media (max-width: 600px) {
+      .row-label {
+        width: 120px;
+        min-width: 120px;
+        font-size: 11px;
+        padding-right: 8px;
+      }
+      .divider { margin-left: 120px; }
+      .value { font-size: 11px; }
+    }
+    .row-label.world {
+      font-weight: 700;
+      color: #222;
+    }
+    .bar-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    /* Single bar */
+    .bar {
+      height: 22px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    /* Stacked bar container */
+    .stacked-bar {
+      height: 22px;
+      display: flex;
+      border-radius: 3px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .stacked-seg {
+      height: 100%;
+    }
+    .value {
+      font-size: 12px;
+      color: #444;
+      white-space: nowrap;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 4px 0 10px 210px;
+    }
+    .source {
+      font-size: 11px;
+      color: #666;
+      margin-top: 28px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chart-container">
+    <h1 id="chartTitle"></h1>
+    <div class="subtitle" id="chartSubtitle"></div>
+    <div class="controls">
+      <label for="viewSelect">Select scenario:</label>
+      <select id="viewSelect">
+        <option value="hist">Historical (2024)</option>
+        <option value="cps">Current Policies Scenario (2050)</option>
+        <option value="steps">Stated Policies Scenario (2050)</option>
+        <option value="stacked">Growth: 2024 → 2050 (Current Policies)</option>
+        <option value="stacked_steps">Growth: 2024 → 2050 (Stated Policies)</option>
+      </select>
+    </div>
+    <div id="legend" class="legend"></div>
+    <div id="chart"></div>
+    <div class="source">Based on data from International Energy Agency (2025), as modified by Hannah Ritchie. Population from IEA Global Energy and Climate Model inputs.</div>
+  </div>
+
+  <script>
+    const data = [
+      { region: "United States",             isWorld: false, hist: 4564/340*1000,      cps: 16521, steps: 16677 },
+      { region: "China",                     isWorld: false, hist: 10169.7/1415*1000,  cps: 16387, steps: 15681 },
+      { region: "European Union",            isWorld: false, hist: 2772.26/448*1000,   cps: 11410, steps: 11466 },
+      { region: "Japan",                     isWorld: false, hist: 1008.78/124*1000,   cps: 11011, steps: 10523 },
+      { region: "Russia",                    isWorld: false, hist: 1188.35/143*1000,   cps: 10597, steps: 10179 },
+      { region: "Europe",                    isWorld: false, hist: 3970.75/692*1000,   cps: 10090, steps: 10126 },
+      { region: "Middle East",               isWorld: false, hist: 1460.84/274*1000,   cps:  8744, steps:  8540 },
+      { region: "Eurasia",                   isWorld: false, hist: 1510.97/241*1000,   cps:  7580, steps:  7452 },
+      { region: "Asia Pacific",              isWorld: false, hist: 16303.76/4340*1000, cps:  7329, steps:  7079 },
+      { region: "North America",             isWorld: false, hist: 5581.41/513*1000,   cps: 13558, steps: 13595 },
+      { region: "Brazil",                    isWorld: false, hist: 747.65/217*1000,    cps:  6108, steps:  5559 },
+      { region: "World",                     isWorld: true,  hist: 31229.37/8091*1000, cps:  6208, steps:  6068 },
+      { region: "Central and South America", isWorld: false, hist: 1462.17/537*1000,   cps:  4833, steps:  4647 },
+      { region: "Southeast Asia",            isWorld: false, hist: 1457.03/690*1000,   cps:  4705, steps:  4584 },
+      { region: "India",                     isWorld: false, hist: 2090.16/1441*1000,  cps:  3608, steps:  3478 },
+      { region: "Africa",                    isWorld: false, hist: 939.46/1494*1000,   cps:  1052, steps:  1052 },
+    ];
+
+    function getMaxBarWidth() {
+      const container = document.querySelector(".chart-container");
+      const isMobile = window.innerWidth <= 600;
+      const labelWidth = isMobile ? 120 : 210;
+      const labelPadRight = isMobile ? 8 : 12;
+      const containerPadding = isMobile ? 32 : 64;
+      const valueWidth = 75;
+      const gap = 8;
+      return Math.max(80, container.clientWidth - labelWidth - labelPadRight - containerPadding - valueWidth - gap);
+    }
+
+    const COLORS = {
+      hist:              "#6abf69",
+      histWorld:         "#3d9e3c",
+      cps:               "#2b7bb9",
+      cpsWorld:          "#1a4f75",
+      steps:             "#9b7fc4",
+      stepsWorld:        "#7259a8",
+      growth:            "#2b7bb9",
+      growthWorld:       "#1a4f75",
+      growthSteps:       "#9b7fc4",
+      growthStepsWorld:  "#7259a8",
+    };
+
+    const viewConfig = {
+      hist: {
+        sortKey: d => d.hist,
+        title: "Electricity generation per person in 2024",
+        subtitle: "Measured in kilowatt-hours per person.",
+        legend: [{ color: COLORS.hist, label: "Historical (2024)" }],
+      },
+      cps: {
+        sortKey: d => d.cps,
+        title: "Electricity generation per person in 2050 in the IEA's Current Policies Scenario",
+        subtitle: "Measured in kilowatt-hours per person.",
+        legend: [{ color: COLORS.cps, label: "Current Policies Scenario (2050)" }],
+      },
+      steps: {
+        sortKey: d => d.steps,
+        title: "Electricity generation per person in 2050 in the IEA's Stated Policies Scenario",
+        subtitle: "Measured in kilowatt-hours per person.",
+        legend: [{ color: COLORS.steps, label: "Stated Policies Scenario (2050)" }],
+      },
+      stacked: {
+        sortKey: d => d.cps,
+        title: "Electricity generation per person today and in 2050 in the IEA's Current Policies Scenario",
+        subtitle: "Measured in kilowatt-hours per person.",
+        legend: [
+          { color: COLORS.hist,   label: "Historical (2024)" },
+          { color: COLORS.growth, label: "Growth to 2050 (Current Policies)" },
+        ],
+      },
+      stacked_steps: {
+        sortKey: d => d.steps,
+        title: "Electricity generation per person today and in 2050 in the IEA's Stated Policies Scenario",
+        subtitle: "Measured in kilowatt-hours per person.",
+        legend: [
+          { color: COLORS.hist,        label: "Historical (2024)" },
+          { color: COLORS.growthSteps, label: "Growth to 2050 (Stated Policies)" },
+        ],
+      },
+    };
+
+    function render(view) {
+      const cfg = viewConfig[view];
+      const MAX_BAR_WIDTH = getMaxBarWidth();
+      document.getElementById("chartTitle").textContent = cfg.title;
+      document.getElementById("chartSubtitle").textContent = cfg.subtitle;
+
+      // Sort: World always separated; sort others by sortKey descending
+      const others = data.filter(d => !d.isWorld).sort((a, b) => cfg.sortKey(b) - cfg.sortKey(a));
+      const world  = data.filter(d => d.isWorld);
+
+      // Compute max for scale
+      let maxVal;
+      if (view === "stacked" || view === "stacked_steps") {
+        maxVal = Math.max(...data.map(d => Math.max(d.cps, d.steps)));
+      } else {
+        maxVal = Math.max(...data.map(d => cfg.sortKey(d)));
+      }
+
+      // Legend
+      const legendEl = document.getElementById("legend");
+      if (cfg.legend.length <= 1) {
+        legendEl.innerHTML = "";
+        legendEl.style.display = "none";
+      } else {
+        legendEl.style.display = "flex";
+        legendEl.innerHTML = cfg.legend.map(l =>
+          `<div class="legend-item">
+            <div class="legend-swatch" style="background:${l.color}"></div>
+            ${l.label}
+          </div>`
+        ).join("");
+      }
+
+      // Chart
+      const chart = document.getElementById("chart");
+      chart.innerHTML = "";
+
+      const allRows = [...others];
+      // Insert world divider + world row after the last region that is >= world value
+      const worldVal = cfg.sortKey(world[0]);
+      let worldInserted = false;
+
+      function makeRow(d) {
+        const isW = d.isWorld;
+        const row = document.createElement("div");
+        row.className = "bar-row";
+
+        const label = document.createElement("div");
+        label.className = "row-label" + (isW ? " world" : "");
+        label.textContent = d.region;
+
+        const barWrap = document.createElement("div");
+        barWrap.className = "bar-wrap";
+
+        let barEl, displayVal;
+
+        if (view === "stacked" || view === "stacked_steps") {
+          const target = view === "stacked" ? d.cps : d.steps;
+          const growthColor     = view === "stacked" ? COLORS.growth            : COLORS.growthSteps;
+          const growthColorWorld= view === "stacked" ? COLORS.growthWorld       : COLORS.growthStepsWorld;
+          const histW   = d.hist / maxVal * MAX_BAR_WIDTH;
+          const growthW = Math.max(0, (target - d.hist) / maxVal * MAX_BAR_WIDTH);
+          barEl = document.createElement("div");
+          barEl.className = "stacked-bar";
+          barEl.style.width = (histW + growthW) + "px";
+
+          const seg1 = document.createElement("div");
+          seg1.className = "stacked-seg";
+          seg1.style.width = histW + "px";
+          seg1.style.background = isW ? COLORS.histWorld : COLORS.hist;
+
+          const seg2 = document.createElement("div");
+          seg2.className = "stacked-seg";
+          seg2.style.width = growthW + "px";
+          seg2.style.background = isW ? growthColorWorld : growthColor;
+
+          barEl.appendChild(seg1);
+          barEl.appendChild(seg2);
+          displayVal = Math.round(target).toLocaleString() + " kWh";
+        } else {
+          const val = cfg.sortKey(d);
+          barEl = document.createElement("div");
+          barEl.className = "bar";
+          barEl.style.width = (val / maxVal * MAX_BAR_WIDTH) + "px";
+          barEl.style.background = isW
+            ? (view === "steps" ? COLORS.stepsWorld : view === "hist" ? COLORS.histWorld : COLORS.cpsWorld)
+            : (view === "steps" ? COLORS.steps      : view === "hist" ? COLORS.hist      : COLORS.cps);
+          displayVal = Math.round(val).toLocaleString() + " kWh";
+        }
+
+        const valEl = document.createElement("div");
+        valEl.className = "value";
+        valEl.textContent = displayVal;
+
+        barWrap.appendChild(barEl);
+        barWrap.appendChild(valEl);
+        row.appendChild(label);
+        row.appendChild(barWrap);
+        return row;
+      }
+
+      // Render non-world rows, inserting World with divider at the right position
+      allRows.forEach(d => {
+        if (!worldInserted && cfg.sortKey(d) < worldVal) {
+          // Insert world + divider before this row
+          chart.appendChild(makeRow(world[0]));
+          const hr = document.createElement("hr");
+          hr.className = "divider";
+          chart.appendChild(hr);
+          worldInserted = true;
+        }
+        chart.appendChild(makeRow(d));
+      });
+
+      // If world is lowest (or wasn't inserted), append at bottom
+      if (!worldInserted) {
+        const hr = document.createElement("hr");
+        hr.className = "divider";
+        chart.appendChild(hr);
+        chart.appendChild(makeRow(world[0]));
+      }
+    }
+
+    const selectEl = document.getElementById("viewSelect");
+    selectEl.addEventListener("change", e => render(e.target.value));
+    window.addEventListener("resize", () => render(selectEl.value));
+    render("hist");
+  </script>
+</body>
+</html>
