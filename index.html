@@ -30,6 +30,17 @@
       h1 { font-size: 20px; }
       .subtitle { font-size: 13px; }
     }
+    .context {
+      font-size: 14px;
+      color: #444;
+      line-height: 1.6;
+      max-width: 920px;
+      margin: 0 0 16px 0;
+    }
+    .context a {
+      color: #2b7bb9;
+      text-decoration: underline;
+    }
     .controls {
       display: flex;
       align-items: center;
@@ -150,6 +161,7 @@
   </style>
 </head>
 <body>
+  <p class="context">This data reflects electricity generation per person across selected regions and countries today, and in <a href="https://www.iea.org/data-and-statistics/data-product/global-energy-and-climate-model-key-input-data" target="_blank" rel="noopener">the scenarios</a> published by the International Energy Agency (IEA) for 2050.<br><br>Per capita values were calculated by dividing total electricity generation by population figures published by the IEA. This generation data includes electricity used for residential purposes, in industry, commercial and other services.</p>
   <div class="chart-container">
     <h1 id="chartTitle"></h1>
     <div class="subtitle" id="chartSubtitle"></div>
